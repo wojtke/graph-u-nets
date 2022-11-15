@@ -25,10 +25,11 @@ def train_epoch(model, optimizer, criterion, train_loader, val_loader, device):
 
 
 class EarlyStopping:
-    def __init__(self, patience, objective="minimize", min_epochs=0):
+    def __init__(self, patience, objective="minimize", min_epochs=0, verbose=False):
         self.objective = objective
         self.patience = patience
         self.min_epochs = min_epochs
+        self.verbose = verbose
 
         self.best_objective = None
         self.best_epoch = None
@@ -60,6 +61,11 @@ class EarlyStopping:
             self.epoch - self.best_epoch > self.patience
             and self.epoch > self.min_epochs
         ):
+            if self.verbose:
+                print(
+                    f"Early stopping after {self.epoch} epochs with best "
+                    f"objective of {self.best_objective} at epoch {self.best_epoch}."
+                )
             raise EarlyStoppingException()
 
 
