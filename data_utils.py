@@ -1,6 +1,18 @@
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold
+from torch_geometric.datasets import TUDataset
 from torch_geometric.loader import DataLoader
+
+
+def get_dataset(dataset_name):
+    """Returns a dataset from torch_geometric.datasets.
+
+    Args:
+        dataset_name (str): Name of the dataset to load.
+    """
+    dataset = TUDataset(root="data/TUDataset", name=dataset_name)
+
+    return dataset
 
 
 def get_dataset_cv_incicies(dataset, k_folds=10):
@@ -24,6 +36,7 @@ def get_dataloaders(dataset, batch_size=32, val_size=0.1):
         batch_size (int): Batch size for the dataloaders (default: 32).
         val_size (float): Proportion of the dataset to use for validation (default: 0.1).
     """
+
     train_idx, val_idx = train_test_split(
         np.arange(dataset.len()),
         test_size=val_size,
