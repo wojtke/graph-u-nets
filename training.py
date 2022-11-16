@@ -21,7 +21,10 @@ def train_epoch(model, optimizer, criterion, train_loader, val_loader, device):
             loss += criterion(out, batch.y)
             correct += (out.argmax(dim=1) == batch.y).sum()
 
-    return loss / len(val_loader), correct / len(val_loader.dataset)
+    loss = loss / len(val_loader.dataset)
+    acc = correct / len(val_loader.dataset)
+
+    return loss.cpu().item(), acc.cpu().item()
 
 
 class EarlyStopping:
@@ -63,8 +66,8 @@ class EarlyStopping:
         ):
             if self.verbose:
                 print(
-                    f"Early stopping after {self.epoch} epochs with best "
-                    f"objective of {self.best_objective} at epoch {self.best_epoch}."
+                    f"Early stopping after {self.epoch - 1} epochs with best "
+                    f"objective of {self.best_objective:.4f} at epoch {self.best_epoch}."
                 )
             raise EarlyStoppingException()
 

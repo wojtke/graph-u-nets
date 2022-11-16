@@ -1,3 +1,4 @@
+import json
 import os
 import random
 
@@ -27,3 +28,10 @@ def print_args(args):
     for k, v in vars(args).items():
         print(f"{k:>15} : {v}")
     print("-" * 40)
+
+
+def read_config(config_path):
+    """Reads a config file."""
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    return config
