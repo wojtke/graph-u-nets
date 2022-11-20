@@ -35,3 +35,10 @@ def read_config(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
     return config
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
