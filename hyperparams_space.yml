@@ -1,0 +1,44 @@
+hidden_channels:
+  type: int
+  low: 256
+  high: 768
+  step: 64
+
+depth:
+  type: int
+  low: 3
+  high: 4
+
+pool_ratios:
+  type: float
+  low: 0.5
+  high: 0.9
+
+dropout:
+  type: float
+  low: 0.0
+  high: 0.3
+
+act: elu
+
+readout:
+  type: categorical
+  choices: [mean, add, max, cat]
+
+batch_size:
+    type: int
+    low: 64
+    high: 256
+    step: 64
+
+lr:
+  type: float
+  low: 0.0001
+  high: 0.01
+  log: true
+
+weight_decay:
+  type: float
+  low: 0.000001
+  high: 0.005
+  log: true
