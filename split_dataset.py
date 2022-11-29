@@ -1,11 +1,11 @@
 import argparse
-import json
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch_geometric.datasets import TUDataset
 
-from utils import NumpyEncoder, set_reproducibility
+from utils import set_reproducibility
 
 
 def parse_args():
@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     # load the dataset
     if args.dataset in ["PROTEINS", "ENZYMES"]:
-        dataset = TUDataset(root='data', name=args.dataset)
+        dataset = TUDataset(root="data", name=args.dataset)
     else:
         raise ValueError(f"Dataset {args.dataset} not found.")
 
@@ -34,12 +34,10 @@ if __name__ == "__main__":
         skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
         folds = skf.split(np.arange(dataset.len()), [data.y.item() for data in dataset])
 
-        for train_idx, test_idx in folds:
-            with open(f'data/{args.dataset}/split.json', 'w') as f:
-                json.dump({
-                    "train_idx": train_idx,
-                    "test_idx": test_idx
-                }, f, cls=NumpyEncoder)
+        for i, (train_idx, test_idx) in enumerate(folds):
+            pd.DataFrame(train_idx).to_csv(f"data/{args.dataset}/splits/train{i}.csv", index=False)
+            pd.DataFrame(test_idx).to_csv(f"data/{args.dataset}/splits/test{i}.csv", index=False)
+            print(f"Fold {i} saved to data/{args.dataset}/splits/")
 
     # split data into train and test set using stratified holdout
     elif args.method == "holdout":
@@ -49,8 +47,6 @@ if __name__ == "__main__":
             stratify=[data.y.item() for data in dataset],
         )
 
-        with open(f'data/{args.dataset}/split.json', 'w') as f:
-            json.dump({
-                "train_idx": train_idx,
-                "test_idx": test_idx
-            }, f, cls=NumpyEncoder)
+        pd.DataFrame(train_idx).to_csv(f"data/{args.dataset}/splits/train.csv", index=False)
+        pd.DataFrame(test_idx).to_csv(f"data/{args.dataset}/splits/test.csv", index=False)
+        print(f"Train and test splits saved to data/{args.dataset}/splits/")
