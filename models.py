@@ -14,79 +14,49 @@ from torch_geometric.utils import (
 from torch_geometric.utils.repeat import repeat
 from torch_sparse import spspmm
 
-
-def create_model(in_channels, out_channels, **hyperparams):
-    """Create a model from hyperparameters.
-
-    Args:
-        in_channels (int): Number of input channels - number of features per node.
-        out_channels (int): Number of output channels - number of classes.
-        **hyperparams: Hyperparameters.
-    """
-    g_unet = GraphUNet(
-        in_channels=in_channels,
-        hidden_channels=hyperparams["channels_unet"],
-        out_channels=hyperparams["channels_unet"],
-        depth=hyperparams["depth"],
-        pool_ratios=hyperparams["pool_ratios"],
-        dropout=hyperparams["dropout_unet"],
-        sum_res=False,
-        act=hyperparams["activation_unet"],
-        pool=hyperparams["pooling"],
-    )
-
-    gnn = GNN(
-        g_unet=g_unet,
-        readout=hyperparams["readout"],
-        mlp_channels=hyperparams["channels_classifier"],
-        mlp_layers=hyperparams["layers_classifier"],
-        dropout=hyperparams["dropout_classifier"],
-        out_channels=out_channels,
-    )
-
-    return gnn
+from hyperparams import Hyperparams
 
 
 class GNN(torch.nn.Module):
-    """Graph neural network consisting of a graph u-net, readout and MLP layers."""
+    """Graph neural network consisting of a graph U-Net, readout and MLP layers."""
 
-    def __init__(self, g_unet: torch.nn.Module, readout: str, mlp_channels, mlp_layers, dropout, out_channels):
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            hyperparams: Hyperparams
+    ):
         """Initializes the GNN.
 
         Args:
-            g_unet (torch.nn.Module): Graph u-net module.
-            readout (str): Readout function. One of "add", "mean", "max", "cat".
-            mlp_channels (int): Number of channels in the MLP layers.
-            mlp_layers (int): Number of MLP layers.
-            dropout (float): Dropout probability for MLP layers.
-            out_channels (int): Number of output channels - number of classes.
+            in_channels: Number of input features.
+            out_channels: Number of output features.
+            hyperparams: Hyperparameters dataclass.
         """
         super().__init__()
-        self.g_unet = g_unet
-        self.readout = {
-            "mean": torch_geometric.nn.global_mean_pool,
-            "max": torch_geometric.nn.global_max_pool,
-            "add": torch_geometric.nn.global_add_pool,
-            "cat": self.readout_cat,
-        }[readout.lower()]
 
-        self.out = torch.nn.Sequential()
-        channels = [
-            self.g_unet.out_channels if self.readout != self.readout_cat else self.g_unet.out_channels * 3,
-            *[mlp_channels for _ in range(mlp_layers-1)],
-            out_channels
-        ]
-        for i in range(mlp_layers):
-            self.out.add_module(f"mlp_dropout_{i}", torch.nn.Dropout(dropout) if dropout > 0 else torch.nn.Identity())
-            self.out.add_module(f"mlp_{i}", torch.nn.Linear(channels[i], channels[i + 1]))
-            self.out.add_module(f"mlp_act_{i}", torch.nn.ELU()) if i < mlp_layers - 1 else None
-
-    def readout_cat(self, x, batch):
-        """Concatenates the readout of the three types of global pooling."""
-        a = torch_geometric.nn.global_mean_pool(x, batch)
-        b = torch_geometric.nn.global_max_pool(x, batch)
-        c = torch_geometric.nn.global_add_pool(x, batch)
-        return torch.cat([a, b, c], dim=1)
+        self.g_unet = GraphUNet(
+            in_channels=in_channels,
+            hidden_channels=hyperparams.hidden_channels,
+            out_channels=hyperparams.hidden_channels,
+            depth=hyperparams.depth,
+            pool_ratios=hyperparams.pool_ratios,
+            dropout=hyperparams.dropout,
+            conv=hyperparams.conv,
+            pool=hyperparams.pool,
+        )
+        self.readout = hyperparams.readout
+        if self.readout.__name__ == "readout_cat":
+            channels = 3 * self.g_unet.out_channels
+        else:
+            channels = self.g_unet.out_channels
+        self.out = MLP(
+            in_channels=channels,
+            hidden_channels=hyperparams.hidden_channels,
+            out_channels=out_channels,
+            num_layers=1,
+            act=hyperparams.act,
+        )
 
     def forward(self, x, edge_index, batch):
         x = self.g_unet(x, edge_index, batch)
@@ -97,6 +67,43 @@ class GNN(torch.nn.Module):
     def reset_parameters(self):
         self.g_unet.reset_parameters()
         self.out.reset_parameters()
+
+
+class MLP(torch.nn.Sequential):
+    """Multi-layer perceptron."""
+
+    def __init__(
+            self,
+            in_channels: int,
+            out_channels: int,
+            hidden_channels: int,
+            num_layers: int,
+            dropout: int = 0.0,
+            act: Callable = torch.nn.ReLU,
+    ):
+        """Initializes the MLP.
+
+        Args:
+            in_channels: Number of input features.
+            out_channels: Number of output features.
+            hidden_channels: Number of hidden features.
+            num_layers: Number of layers.
+            dropout: Dropout probability after each activation.
+            act: Activation function.
+        """
+        super().__init__()
+
+        if num_layers == 1:
+            self.append(torch.nn.Linear(in_channels, out_channels))
+        else:
+            self.append(torch.nn.Linear(in_channels, hidden_channels))
+            self.append(act())
+            self.append(torch.nn.Dropout(dropout))
+            for _ in range(num_layers - 2):
+                self.append(torch.nn.Linear(hidden_channels, hidden_channels))
+                self.append(act())
+                self.append(torch.nn.Dropout(dropout))
+            self.append(torch.nn.Linear(hidden_channels, out_channels))
 
 
 class GraphUNet(torch.nn.Module):
@@ -114,9 +121,9 @@ class GraphUNet(torch.nn.Module):
         sum_res (bool, optional): If set to :obj:`False`, will use
             concatenation for integration of skip connections instead
             summation. (default: :obj:`True`)
-        act (str or Callable): The nonlinearity to use.
+        act (Callable): The nonlinearity to use.
             (default: :obj:`torch.nn.functional.relu`)
-        pool (str or Callable) : The pooling layer to use.
+        pool (Callable) : The pooling layer to use.
 
     """
 
@@ -129,8 +136,9 @@ class GraphUNet(torch.nn.Module):
         pool_ratios: Union[float, List[float]] = 0.5,
         dropout: float = 0.0,
         sum_res: bool = True,
-        act: Union[Callable, str] = "relu",
-        pool: Union[Callable, str] = "TopKPooling",
+        act: Callable = F.elu,
+        conv: Callable = GCNConv,
+        pool: Callable = torch_geometric.nn.TopKPooling,
     ) -> None:
         super().__init__()
         assert depth >= 1
@@ -140,23 +148,7 @@ class GraphUNet(torch.nn.Module):
         self.depth = depth
         self.pool_ratios = repeat(pool_ratios, depth)
         self.sum_res = sum_res
-
-        self.act = (
-            act if isinstance(act, Callable)
-            else {
-                "relu": F.relu,
-                "elu": F.elu,
-                "leakyrelu": F.leaky_relu,
-            }[act.lower()]
-        )
-
-        self.pool = (
-            pool if isinstance(act, Callable)
-            else {
-                "topkpooling": torch_geometric.nn.TopKPooling,
-                "sagpooling": torch_geometric.nn.SAGPooling,
-            }[pool.lower()]
-        )
+        self.act = act
 
         channels = hidden_channels
 
@@ -164,17 +156,17 @@ class GraphUNet(torch.nn.Module):
         self.pools = torch.nn.ModuleList()
         self.down_convs.append(GCNConv(in_channels, channels, improved=True))
         for i in range(depth):
-            self.pools.append(self.pool(int(channels), self.pool_ratios[i]))
-            self.down_convs.append(GCNConv(channels, channels, improved=True))
+            self.pools.append(pool(int(channels), self.pool_ratios[i]))
+            self.down_convs.append(conv(channels, channels, improved=True))
 
         in_channels = channels if sum_res else 2 * channels
 
         self.up_convs = torch.nn.ModuleList()
         for i in range(depth - 1):
-            self.up_convs.append(GCNConv(in_channels, channels, improved=True))
-        self.up_convs.append(GCNConv(in_channels, out_channels, improved=True))
+            self.up_convs.append(conv(in_channels, channels, improved=True))
+        self.up_convs.append(conv(in_channels, out_channels, improved=True))
 
-        self.dropout = torch.nn.Dropout(dropout) if dropout > 0 else torch.nn.Identity()
+        self.dropout = torch.nn.Dropout(dropout)
 
         self.reset_parameters()
 
@@ -202,13 +194,9 @@ class GraphUNet(torch.nn.Module):
         for i in range(1, self.depth + 1):
             x = self.dropout(x)
 
-            edge_index, edge_weight = self.augment_adj(
-                edge_index, edge_weight, x.size(0)
-            )
+            edge_index, edge_weight = self.augment_adj(edge_index, edge_weight, x.size(0))
 
-            x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](
-                x, edge_index, edge_weight, batch
-            )
+            x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](x, edge_index, edge_weight, batch)
 
             x = self.down_convs[i](x, edge_index, edge_weight)
             x = self.act(x)
@@ -233,17 +221,14 @@ class GraphUNet(torch.nn.Module):
 
             x = self.up_convs[i](x, edge_index, edge_weight)
             x = self.act(x) if i < self.depth - 1 else x
-            x = self.dropout(x)
+            if self.dropout.p > 0:
+                x = self.dropout(x)
 
         return x
 
-    def augment_adj(
-        self, edge_index: Tensor, edge_weight: Tensor, num_nodes: int
-    ) -> PairTensor:
+    def augment_adj(self, edge_index: Tensor, edge_weight: Tensor, num_nodes: int) -> PairTensor:
         edge_index, edge_weight = remove_self_loops(edge_index, edge_weight)
-        edge_index, edge_weight = add_self_loops(
-            edge_index, edge_weight, num_nodes=num_nodes
-        )
+        edge_index, edge_weight = add_self_loops(edge_index, edge_weight, num_nodes=num_nodes)
         edge_index, edge_weight = sort_edge_index(edge_index, edge_weight, num_nodes)
         edge_index, edge_weight = spspmm(
             edge_index,
