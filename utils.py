@@ -1,9 +1,9 @@
-import json
 import os
 import random
 
 import numpy as np
 import torch
+import torch_geometric
 
 
 def set_reproducibility(seed):
@@ -21,24 +21,9 @@ def mkdir_if_not_exists(path):
         os.makedirs(path)
 
 
-def print_args(args):
-    """Prints the argparse arguments in a nice format."""
-    print("-" * 40)
-    print("Arguments:")
-    for k, v in vars(args).items():
-        print(f"{k:>15} : {v}")
-    print("-" * 40)
-
-
-def read_config(config_path):
-    """Reads a config file."""
-    with open(config_path, "r") as f:
-        config = json.load(f)
-    return config
-
-
-class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
+def readout_cat(x: torch.Tensor, batch) -> torch.Tensor:
+    """Concatenates the readout of the three types of global pooling."""
+    a = torch_geometric.nn.global_mean_pool(x, batch)
+    b = torch_geometric.nn.global_max_pool(x, batch)
+    c = torch_geometric.nn.global_add_pool(x, batch)
+    return torch.cat([a, b, c], dim=1)

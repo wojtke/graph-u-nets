@@ -1,52 +1,84 @@
+import os
+from typing import Tuple
+
 import numpy as np
-from sklearn.model_selection import train_test_split, StratifiedKFold
+import pandas as pd
+import yaml
+from sklearn.model_selection import train_test_split
+from torch_geometric.data import Dataset
 from torch_geometric.datasets import TUDataset
-from torch_geometric.loader import DataLoader
+
+import metrics
+from mappings import get_evaluation_metric
 
 
-def get_dataset(dataset_name):
+def load_dataset(dataset_name: str) -> Tuple[Dataset, str, metrics.Metric]:
     """Returns a dataset from torch_geometric.datasets.
+    Also returns the task and evaluation metric associated with the dataset.
 
     Args:
         dataset_name (str): Name of the dataset to load.
+
+    Returns:
+        dataset (torch_geometric.data.Dataset): Loaded dataset.
+        task (str): Task to be performed (classification or regression).
+        evaluation_metric (metrics.Metric): Metric to be used for model evaluation.
     """
-    dataset = TUDataset(root="data/TUDataset", name=dataset_name)
+    if dataset_name in ["ENZYMES", "DD", "PROTEINS", "NCI1", "NCI109", "Mutagenicity"]:
+        dataset = TUDataset(root="data", name=dataset_name)
+    elif dataset_name in ["HIV"]:
+        dataset = TUDataset(root="data", name=dataset_name)
+    else:
+        raise ValueError(f"Dataset {dataset_name} not found")
 
-    return dataset
+    with open(f"data/{dataset_name}/config.yml", "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    task = config["task"]
+    metric = get_evaluation_metric(config["evaluation_metric"])
+
+    return dataset, task, metric
 
 
-def get_dataset_cv_incicies(dataset, k_folds=10):
-    """Returns a list of train and test indicies for each fold.
+def load_splits(dataset_name: str):
+    """Loads saved train and test splits for a dataset.
+
+    Note: Need to run split_dataset.py first to generate the splits.
 
     Args:
-        dataset (torch_geometric.data.Dataset): Dataset to split into folds.
-        k_folds (int): Number of folds to split the dataset into (default: 10).
+        dataset_name (str): Name of the dataset to load splits for.
     """
-    skf = StratifiedKFold(n_splits=k_folds, shuffle=True)
-    folds = skf.split(np.arange(dataset.len()), [data.y.item() for data in dataset])
+    splits = []
+    for file_name in os.listdir(f"data/{dataset_name}/splits"):
+        if file_name.startswith("train"):
+            with open(f"data/{dataset_name}/splits/{file_name}", "r") as f:
+                train_idx = pd.read_csv(f, header=None).values.flatten()
+            with open(f"data/{dataset_name}/splits/{file_name.replace('train', 'test')}", "r") as f:
+                test_idx = pd.read_csv(f, header=None).values.flatten()
+            splits.append((list(train_idx), list(test_idx)))
+    return splits
 
-    return folds
 
-
-def get_dataloaders(dataset, batch_size=32, val_size=0.1):
-    """Returns train and validation dataloaders for a dataset.
+def split_dataset(dataset: Dataset, test_size=0.1, indices=None, return_indices=False):
+    """Returns train and test datasets for a dataset.
 
     Args:
-        dataset (torch_geometric.data.Dataset): Dataset to split into train and validation.
-        batch_size (int): Batch size for the dataloaders (default: 32).
-        val_size (float): Proportion of the dataset to use for validation (default: 0.1).
+        dataset (torch_geometric.data.Dataset): Dataset to split into train and test.
+        test_size (float): Proportion of the dataset to use for testing (default: 0.2).
+        indices (list): Indices to use for splitting (default: None).
+        return_indices (bool): Whether to return the indices of the train and test datasets (default: False).
     """
+    if indices is None:
+        indices = np.arange(dataset.len())
+    train_idx, test_idx = train_test_split(
+        indices,
+        test_size=test_size,
+        stratify=[data.y.item() for data in dataset[indices]],
+    )
+    if return_indices:
+        return list(train_idx), list(test_idx)
+    else:
+        train_dataset = dataset[list(train_idx)]
+        test_dataset = dataset[list(test_idx)]
 
-    train_idx, val_idx = train_test_split(
-        np.arange(dataset.len()),
-        test_size=val_size,
-        stratify=[data.y.item() for data in dataset],
-    )
-    train_loader = DataLoader(
-        dataset[list(train_idx)], batch_size=batch_size, shuffle=True
-    )
-    val_loader = DataLoader(
-        dataset[list(val_idx)], batch_size=batch_size, shuffle=False
-    )
-
-    return train_loader, val_loader
+        return train_dataset, test_dataset

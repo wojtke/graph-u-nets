@@ -1,4 +1,3 @@
-import argparse
 from typing import Tuple, Callable
 
 import optuna
@@ -14,12 +13,12 @@ from training import Trainer
 
 
 def define_objective(
-        dataset: Dataset,
-        split: Tuple[list, list],
-        hyperparams_space: HyperparamsSpace,
-        evaluation_metric: Metric,
-        task: str,
-        pruning: bool = True,
+    dataset: Dataset,
+    split: Tuple[list, list],
+    hyperparams_space: HyperparamsSpace,
+    evaluation_metric: Metric,
+    task: str,
+    pruning: bool = True,
 ) -> Callable:
     """Define the objective function to be optimized.
 
@@ -97,7 +96,8 @@ def select_hyperparams(
     )
 
     objective = define_objective(
-        dataset, split,
+        dataset,
+        split,
         hyperparams_space=hyperparams_space,
         evaluation_metric=metric,
         task=task,
@@ -110,4 +110,7 @@ def select_hyperparams(
         n_jobs=n_jobs,
     )
 
-    return Hyperparams(**study.best_params)
+    return Hyperparams(
+        **study.best_params,
+        **{k: v for k, v in hyperparams_space.__dict__.items() if k not in study.best_params},
+    )

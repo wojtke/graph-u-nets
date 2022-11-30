@@ -20,12 +20,7 @@ from hyperparams import Hyperparams
 class GNN(torch.nn.Module):
     """Graph neural network consisting of a graph U-Net, readout and MLP layers."""
 
-    def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            hyperparams: Hyperparams
-    ):
+    def __init__(self, in_channels: int, out_channels: int, hyperparams: Hyperparams):
         """Initializes the GNN.
 
         Args:
@@ -73,13 +68,13 @@ class MLP(torch.nn.Sequential):
     """Multi-layer perceptron."""
 
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            hidden_channels: int,
-            num_layers: int,
-            dropout: int = 0.0,
-            act: Callable = torch.nn.ReLU,
+        self,
+        in_channels: int,
+        out_channels: int,
+        hidden_channels: int,
+        num_layers: int,
+        dropout: int = 0.0,
+        act: Callable = torch.nn.ReLU,
     ):
         """Initializes the MLP.
 

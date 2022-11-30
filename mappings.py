@@ -2,6 +2,7 @@ from typing import Callable
 
 import torch
 import torch_geometric
+
 import metrics
 import utils
 
@@ -54,7 +55,7 @@ READOUT_METHODS = {
     "mean": torch_geometric.nn.global_mean_pool,
     "max": torch_geometric.nn.global_max_pool,
     "add": torch_geometric.nn.global_add_pool,
-    "cat": utils.readout_cat
+    "cat": utils.readout_cat,
 }
 
 
@@ -79,4 +80,3 @@ def get_activation(activation_name: str) -> Callable:
         return ACTIVATIONS[activation_name.lower()]
     else:
         raise ValueError(f"Activation function '{activation_name}' not supported.")
-

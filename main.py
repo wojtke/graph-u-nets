@@ -57,18 +57,18 @@ if __name__ == "__main__":
             study_name=f"{args.dataset}/{args.conv}_{args.pool}",
             hyperparams_space=hyperparams_space,
             metric=evaluation_metric,
-            n_trials=5,
+            n_trials=1,
             task=task,
-            pruning=False
+            pruning=False,
         )
         print(f"Selected hyperparams: \n{hyperparams}")
 
         inner_results = []
-        for i in range(args.trials):
+        for i in range(args.test_trials):
             # re-split the dataset and create the dataloaders
             train_idx, val_idx = split_dataset(dataset, test_size=0.1, indices=train_idx + val_idx, return_indices=True)
-            train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)
-            val_loader = DataLoader(dataset[list(val_idx)], hyperparams.batch_size, shuffle=False)
+            train_loader = DataLoader(dataset[train_idx], hyperparams.batch_size, shuffle=True)
+            val_loader = DataLoader(dataset[val_idx], hyperparams.batch_size, shuffle=False)
 
             # Initialize the model and the trainer using selected hyperparams
             model = GNN(in_channels=dataset.num_features, out_channels=dataset.num_classes, hyperparams=hyperparams)
@@ -85,14 +85,14 @@ if __name__ == "__main__":
             trainer.train(train_loader, val_loader, epochs=hyperparams.max_epochs)
 
             # Evaluate the model on the test set.
-            test_loader = DataLoader(dataset[list(test_idx)], hyperparams.batch_size, shuffle=False)
+            test_loader = DataLoader(dataset[test_idx], hyperparams.batch_size, shuffle=False)
             evaluation_score = trainer.evaluate(test_loader)
 
             inner_results.append(evaluation_score)
-            print(f"Test trial {i + 1}/{args.trials} - {evaluation_metric}: {evaluation_score:.4f}")
+            print(f"Test trial {i + 1}/{args.test_trials} - {evaluation_metric.__name__}: {evaluation_score:.4f}")
         results.append(sum(inner_results) / len(inner_results))
 
     print("========================================")
     print("Results: ", results)
-    print(f"Average score ({evaluation_metric}): {sum(results) / len(results)}")
+    print(f"Average score ({evaluation_metric.__name__}): {sum(results) / len(results)}")
     print(f"Standard deviation: {np.std(results)}")
