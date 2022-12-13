@@ -73,8 +73,8 @@ class Trainer:
 
         self._early_stopping_check = check
 
-    def set_optuna_trial_prunning(self, trial: optuna.Trial):
-        """Set optuna trial prunning callback."""
+    def set_optuna_trial_pruning(self, trial: optuna.Trial):
+        """Set optuna trial pruning callback."""
 
         def optuna_callback(scores):
             trial.report(scores["val_metric"], self.epoch)

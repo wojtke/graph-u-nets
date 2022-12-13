@@ -2,10 +2,10 @@ import argparse
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from torch_geometric.datasets import TUDataset
+from sklearn.model_selection import StratifiedKFold, KFold
 
-from utils import set_reproducibility
+from data_utils import load_dataset, load_dataset_artifacts, split_indices
+from utils import set_reproducibility, mkdir_if_not_exists
 
 
 def parse_args():
@@ -24,15 +24,19 @@ if __name__ == "__main__":
     set_reproducibility(args.seed)
 
     # load the dataset
-    if args.dataset in ["PROTEINS", "ENZYMES"]:
-        dataset = TUDataset(root="data", name=args.dataset)
-    else:
-        raise ValueError(f"Dataset {args.dataset} not found.")
+    dataset = load_dataset(args.dataset)
+    task, evaluation_metric = load_dataset_artifacts(args.dataset)
+
+    mkdir_if_not_exists(f"data/{args.dataset}/splits")
 
     # split data into stratified cv folds
     if args.method == "cv":
-        skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
-        folds = skf.split(np.arange(dataset.len()), [data.y.item() for data in dataset])
+        if task == "regression":
+            kf = KFold(n_splits=args.folds, shuffle=True)
+            folds = kf.split(np.arange(dataset.len()))
+        else:
+            skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
+            folds = skf.split(np.arange(dataset.len()), [data.y.item() for data in dataset])
 
         for i, (train_idx, test_idx) in enumerate(folds):
             pd.DataFrame(train_idx).to_csv(f"data/{args.dataset}/splits/train{i}.csv", index=False)
@@ -41,10 +45,8 @@ if __name__ == "__main__":
 
     # split data into train and test set using stratified holdout
     elif args.method == "holdout":
-        train_idx, test_idx = train_test_split(
-            np.arange(dataset.len()),
-            test_size=args.test_size,
-            stratify=[data.y.item() for data in dataset],
+        train_idx, test_idx = split_indices(
+            dataset, test_size=args.test_size, method="stratified" if task == "classification" else None
         )
 
         pd.DataFrame(train_idx).to_csv(f"data/{args.dataset}/splits/train.csv", index=False)

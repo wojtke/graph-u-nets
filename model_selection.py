@@ -10,6 +10,7 @@ from hyperparams import HyperparamsSpace, Hyperparams
 from metrics import Metric
 from models import GNN
 from training import Trainer
+from utils import mkdir_if_not_exists
 
 
 def define_objective(
@@ -34,14 +35,14 @@ def define_objective(
     def objective(trial: optuna.Trial) -> float:
         """Objective function to be optimized by optuna."""
         hyperparams = hyperparams_space.pick(trial)
-        print(f"Trying hyperparams: \n{hyperparams}")
 
         train_idx, val_idx = split
         train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)
         val_loader = DataLoader(dataset[list(val_idx)], hyperparams.batch_size, shuffle=False)
 
         # Generate the model.
-        model = GNN(in_channels=dataset.num_features, out_channels=dataset.num_classes, hyperparams=hyperparams)
+        out_channels = 1 if task == "regression" else dataset.num_classes
+        model = GNN(in_channels=dataset.num_features, out_channels=out_channels, hyperparams=hyperparams)
 
         optimizer = torch.optim.Adam(
             model.parameters(),
@@ -95,6 +96,9 @@ def select_hyperparams(
         load_if_exists=True,
     )
 
+    mkdir_if_not_exists(f"runs/{study_name}")
+    hyperparams_space.save(f"runs/{study_name}/hyperparams_space.yml")
+
     objective = define_objective(
         dataset,
         split,
@@ -110,7 +114,11 @@ def select_hyperparams(
         n_jobs=n_jobs,
     )
 
-    return Hyperparams(
+    best_hyperparams = Hyperparams(
         **study.best_params,
         **{k: v for k, v in hyperparams_space.__dict__.items() if k not in study.best_params},
     )
+
+    best_hyperparams.save(f"runs/{study_name}/best_hyperparams.yml")
+
+    return best_hyperparams

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, average_precision_score
 
 
 class Metric(ABC):
@@ -39,6 +39,10 @@ class Accuracy(Metric):
     def __call__(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
+
+        if y_pred.ndim == 2:
+            y_pred = torch.argmax(y_pred, dim=1)
+
         return (y_true == y_pred).float().mean().item()
 
     @classmethod
@@ -67,8 +71,20 @@ class MSE(Metric):
     def __call__(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
+
         return torch.nn.functional.mse_loss(y_pred, y_true).item()
 
     @classmethod
     def direction(cls):
         return "minimize"
+
+
+class AveragePrecision(Metric):
+    def __call__(self):
+        y_true = torch.cat(self.y_true, dim=0)
+        y_pred = torch.cat(self.y_pred, dim=0)
+        return average_precision_score(y_true, y_pred)
+
+    @classmethod
+    def direction(cls):
+        return "maximize"

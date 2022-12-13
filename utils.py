@@ -27,3 +27,10 @@ def readout_cat(x: torch.Tensor, batch) -> torch.Tensor:
     b = torch_geometric.nn.global_max_pool(x, batch)
     c = torch_geometric.nn.global_add_pool(x, batch)
     return torch.cat([a, b, c], dim=1)
+
+
+def print_args(args):
+    print("Arguments:")
+    for k, v in vars(args).items():
+        print(f"{k:>20} : {v}")
+    print()
