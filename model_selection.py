@@ -20,6 +20,7 @@ def define_objective(
     evaluation_metric: Metric,
     task: str,
     pruning: bool = True,
+    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> Callable:
     """Define the objective function to be optimized.
 
@@ -30,6 +31,7 @@ def define_objective(
         evaluation_metric: Metric to be used for model evaluation.
         task: Task to be performed (classification or regression).
         pruning: Whether to use pruning or not.
+        device: Device to use. (default: "cuda")
     """
 
     def objective(trial: optuna.Trial) -> float:
@@ -53,7 +55,7 @@ def define_objective(
 
         writer = SummaryWriter(f"runs/{trial.study.study_name}/trial{trial.number:04d}")
 
-        trainer = Trainer(model, optimizer, criterion, evaluation_metric, writer=writer)
+        trainer = Trainer(model, optimizer, criterion, evaluation_metric, writer=writer, device=device)
         trainer.set_early_stopping(patience=hyperparams.patience, min_epochs=hyperparams.min_epochs)
         if pruning:
             trainer.set_optuna_trial_prunning(trial)
@@ -74,10 +76,12 @@ def select_hyperparams(
     pruning: bool = True,
     n_trials: int = 10,
     n_jobs: int = 1,
+    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> Hyperparams:
     """Select the best hyperparameters for the given dataset and split.
 
     Args:
+        device:
         dataset: Dataset to be used for training.
         split: Split of the dataset to be used for training and validation.
         study_name: Name of the study.
@@ -106,6 +110,7 @@ def select_hyperparams(
         evaluation_metric=metric,
         task=task,
         pruning=pruning,
+        device=device,
     )
 
     study.optimize(

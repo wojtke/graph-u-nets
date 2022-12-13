@@ -27,6 +27,7 @@ def get_pool(pooling_name: str) -> Callable:
     POOLING_METHODS = {
         "topk": torch_geometric.nn.TopKPooling,
         "sag": torch_geometric.nn.SAGPooling,
+        "asap": torch_geometric.nn.ASAPooling,
     }
 
     if pooling_name.lower() in POOLING_METHODS:

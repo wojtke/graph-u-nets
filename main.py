@@ -23,16 +23,17 @@ def parse_args():
     parser.add_argument("--hyperparams-space", type=str, default="hyperparams_space.yml")
     parser.add_argument("--n-jobs", type=int, default=2, help="Number of parallel jobs for hyperparameter selection")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
+    parser.add_argument("--device", type=str, default="cuda", help="Device to be used for training")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
     print_args(args)
-
     study_name = f"{args.dataset}/{args.conv}_{args.pool}"
 
     set_reproducibility(args.seed)
+    device = torch.device(int(args.device)) if args.device.isdigit() else torch.device(args.device)
 
     # Load the dataset related things
     dataset = load_dataset(args.dataset)
@@ -68,6 +69,7 @@ if __name__ == "__main__":
             task=task,
             pruning=False,
             n_jobs=args.n_jobs,
+            device=device,
         )
         print(f"Selected hyperparams: \n{hyperparams}")
 
@@ -94,7 +96,7 @@ if __name__ == "__main__":
 
             # Train the model. Use early stopping on the validation set.
             writer = SummaryWriter(f"runs/{study_name}/{i}/assessment{j}")
-            trainer = Trainer(model, optimizer, criterion, metric=evaluation_metric)
+            trainer = Trainer(model, optimizer, criterion, metric=evaluation_metric, device=device, writer=writer)
             trainer.set_early_stopping(patience=hyperparams.patience, min_epochs=hyperparams.min_epochs)
             trainer.train(train_loader, val_loader, epochs=hyperparams.max_epochs)
 
@@ -103,7 +105,7 @@ if __name__ == "__main__":
             evaluation_score = trainer.evaluate(test_loader)
 
             inner_results.append(evaluation_score)
-            print(f"Test trial {i + 1}/{args.test_trials} - {evaluation_metric.__name__}: {evaluation_score:.4f}")
+            print(f"Test trial {j + 1}/{args.test_trials} - {evaluation_metric.__name__}: {evaluation_score:.4f}")
         results.append(sum(inner_results) / len(inner_results))
 
     print("========================================")

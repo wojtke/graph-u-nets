@@ -191,7 +191,7 @@ class GraphUNet(torch.nn.Module):
 
             edge_index, edge_weight = self.augment_adj(edge_index, edge_weight, x.size(0))
 
-            x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](x, edge_index, edge_weight, batch)
+            x, edge_index, edge_weight, batch, perm = self.pools[i - 1](x, edge_index, edge_weight, batch)[:5]
 
             x = self.down_convs[i](x, edge_index, edge_weight)
             x = self.act(x)

@@ -15,7 +15,7 @@ class Trainer:
         metric: Metric = Accuracy,
         writer=None,
         verbose: bool = False,
-        device="cuda",
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     ):
         """Initialize trainer.
 
