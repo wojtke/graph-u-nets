@@ -26,10 +26,10 @@ readout:
   choices: [mean, add, max, cat]
 
 batch_size:
-    type: int
-    low: 64
-    high: 256
-    step: 64
+  type: int
+  low: 64
+  high: 128
+  step: 64
 
 lr:
   type: float

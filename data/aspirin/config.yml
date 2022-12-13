@@ -1,0 +1,2 @@
+task: regression
+evaluation_metric: MSE
