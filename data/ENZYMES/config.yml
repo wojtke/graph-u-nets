@@ -1,0 +1,2 @@
+task: classification
+evaluation_metric: Accuracy
