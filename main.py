@@ -16,12 +16,13 @@ from utils import set_reproducibility, print_args
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="PROTEINS", help="dataset")
+    parser.add_argument("--split", type=str, default="default", help="Split name")
     parser.add_argument("--pool", type=str, default="topk", help="Pooling method")
     parser.add_argument("--conv", type=str, default="gcn", help="Convolution method")
     parser.add_argument("--selection-trials", type=int, default=2, help="Number of trials for hyperparameter selection")
     parser.add_argument("--test-trials", type=int, default=2, help="Number of trials for model testing")
     parser.add_argument("--hyperparams-space", type=str, default="hyperparams_space.yml")
-    parser.add_argument("--n-jobs", type=int, default=2, help="Number of parallel jobs for hyperparameter selection")
+    parser.add_argument("--n-jobs", type=int, default=1, help="Number of parallel jobs for hyperparameter selection")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
     parser.add_argument("--device", type=str, default="cuda", help="Device to be used for training")
     return parser.parse_args()
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     # Load the dataset related things
     dataset = load_dataset(args.dataset)
     task, evaluation_metric = load_dataset_artifacts(args.dataset)
-    splits = load_splits(args.dataset)
+    splits = load_splits(args.dataset, args.split)
     print(f"Dataset loaded: {args.dataset} - Task: {task} - Metric: {evaluation_metric}")
     print(f"Loaded {len(splits)} splits. Train: {len(splits[0][0])} examples - Val: {len(splits[0][1])} examples")
 

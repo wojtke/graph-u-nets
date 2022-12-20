@@ -43,20 +43,21 @@ def load_dataset_artifacts(dataset_name: str) -> Tuple[str, metrics.Metric]:
     return task, metric
 
 
-def load_splits(dataset_name: str):
+def load_splits(dataset_name: str, split_name: str = "default"):
     """Loads saved train and test splits for a dataset.
 
     Note: Need to run split_dataset.py first to generate the splits.
 
     Args:
         dataset_name (str): Name of the dataset to load splits for.
+        split_name (str): Name of the split to load (default: "default").
     """
     splits = []
-    for file_name in os.listdir(f"data/{dataset_name}/splits"):
+    for file_name in os.listdir(f"data/{dataset_name}/splits/{split_name}"):
         if file_name.startswith("train"):
-            with open(f"data/{dataset_name}/splits/{file_name}", "r") as f:
+            with open(f"data/{dataset_name}/splits/{split_name}/{file_name}", "r") as f:
                 train_idx = pd.read_csv(f, header=None).values.flatten()
-            with open(f"data/{dataset_name}/splits/{file_name.replace('train', 'test')}", "r") as f:
+            with open(f"data/{dataset_name}/splits/{split_name}/{file_name.replace('train', 'test')}", "r") as f:
                 test_idx = pd.read_csv(f, header=None).values.flatten()
             splits.append((list(train_idx), list(test_idx)))
     return splits
@@ -69,6 +70,7 @@ def split_indices(dataset: Dataset, test_size=0.1, indices=None, method=None):
         dataset (torch_geometric.data.Dataset): Dataset to split into train and test.
         test_size (float): Proportion of the dataset to use for testing (default: 0.2).
         indices (list): Indices to use for splitting (default: None).
+        method: Method to use for splitting (default: None).
     """
     if indices is None:
         indices = np.arange(dataset.len())
