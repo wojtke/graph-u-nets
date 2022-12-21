@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import numpy as np
 import torch
@@ -19,8 +20,8 @@ def parse_args():
     parser.add_argument("--split", type=str, default="default", help="Split name")
     parser.add_argument("--pool", type=str, default="topk", help="Pooling method")
     parser.add_argument("--conv", type=str, default="gcn", help="Convolution method")
-    parser.add_argument("--selection-trials", type=int, default=2, help="Number of trials for hyperparameter selection")
-    parser.add_argument("--test-trials", type=int, default=2, help="Number of trials for model testing")
+    parser.add_argument("--selection-trials", type=int, default=50, help="Number of trials for hyperparameter selection")
+    parser.add_argument("--test-trials", type=int, default=3, help="Number of trials for model testing")
     parser.add_argument("--hyperparams-space", type=str, default="hyperparams_space.yml")
     parser.add_argument("--n-jobs", type=int, default=1, help="Number of parallel jobs for hyperparameter selection")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")

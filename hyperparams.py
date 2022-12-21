@@ -24,9 +24,9 @@ class Hyperparams:
     lr: float
     weight_decay: float
 
-    min_epochs: int = 2
-    patience: int = 2
-    max_epochs: int = 5
+    min_epochs: int = 100
+    patience: int = 100
+    max_epochs: int = 1000
 
     def save(self, path):
         """Saves to a yaml file."""

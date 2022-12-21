@@ -1,3 +1,4 @@
+import gc
 from typing import Tuple, Callable
 
 import optuna
@@ -36,7 +37,13 @@ def define_objective(
 
     def objective(trial: optuna.Trial) -> float:
         """Objective function to be optimized by optuna."""
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
         hyperparams = hyperparams_space.pick(trial)
+
+        print(f"Hyperparameters: {hyperparams}")
 
         train_idx, val_idx = split
         train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)

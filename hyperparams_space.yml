@@ -6,8 +6,8 @@ hidden_channels:
 
 depth:
   type: int
-  low: 3
-  high: 4
+  low: 2
+  high: 3
 
 pool_ratios:
   type: float
@@ -23,13 +23,13 @@ act: elu
 
 readout:
   type: categorical
-  choices: [mean, add, max, cat]
+  choices: [add, max, cat]
 
 batch_size:
   type: int
-  low: 64
-  high: 128
-  step: 64
+  low: 32
+  high: 64
+  step: 32
 
 lr:
   type: float
