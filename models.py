@@ -174,6 +174,8 @@ class GraphUNet(torch.nn.Module):
             conv.reset_parameters()
 
     def forward(self, x: Tensor, edge_index: Tensor, batch: OptTensor = None) -> Tensor:
+        if x is None:
+            x = torch.ones((batch.size(0), self.in_channels), device=edge_index.device)
         if batch is None:
             batch = edge_index.new_zeros(x.size(0))
         edge_weight = x.new_ones(edge_index.size(1))
