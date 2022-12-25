@@ -6,7 +6,7 @@ hidden_channels:
 
 depth:
   type: int
-  low: 2
+  low: 3
   high: 3
 
 pool_ratios:

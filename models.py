@@ -47,9 +47,10 @@ class GNN(torch.nn.Module):
             channels = self.g_unet.out_channels
         self.out = MLP(
             in_channels=channels,
-            hidden_channels=hyperparams.hidden_channels,
+            hidden_channels=int(hyperparams.hidden_channels/2),
             out_channels=out_channels,
-            num_layers=1,
+            dropout=hyperparams.dropout,
+            num_layers=2,
             act=hyperparams.act,
         )
 
@@ -73,7 +74,7 @@ class MLP(torch.nn.Sequential):
         out_channels: int,
         hidden_channels: int,
         num_layers: int,
-        dropout: int = 0.0,
+        dropout: float = 0.0,
         act: Callable = torch.nn.ReLU,
     ):
         """Initializes the MLP.
@@ -83,7 +84,7 @@ class MLP(torch.nn.Sequential):
             out_channels: Number of output features.
             hidden_channels: Number of hidden features.
             num_layers: Number of layers.
-            dropout: Dropout probability after each activation.
+            dropout: Dropout probability.
             act: Activation function.
         """
         super().__init__()

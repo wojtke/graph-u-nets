@@ -43,7 +43,7 @@ def define_objective(
 
         hyperparams = hyperparams_space.pick(trial)
 
-        print(f"Hyperparameters\n: {hyperparams}")
+        print(f"Hyperparameters: \n {hyperparams}")
 
         train_idx, val_idx = split
         train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)
