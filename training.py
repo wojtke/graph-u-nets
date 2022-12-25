@@ -43,20 +43,23 @@ class Trainer:
         self.early_stopping = False
         self.patience, self.min_epochs = None, None
         self.best_epoch, self.best_value = None, None
+        self.save_path = None
         self._early_stopping_check = None
         self._optuna_callback = None
 
-    def set_early_stopping(self, patience: int, min_epochs: int = 0):
+    def set_early_stopping(self, patience: int, min_epochs: int = 0, save_path: str = None):
         """Set early stopping parameters.
 
         Args:
             patience: Number of epochs to wait if there is no improvement.
             min_epochs: Minimum number of epochs to train. (default: 0)
+            save_path: Path to save best model weights. (default: None)
         """
 
         self.early_stopping = True
         self.patience = patience
         self.min_epochs = min_epochs
+        self.save_path = save_path
 
         self.best_epoch = 1
         self.best_value = np.inf if self.metric.direction() == "minimize" else -np.inf
@@ -70,6 +73,8 @@ class Trainer:
             ):
                 self.best_epoch = self.epoch
                 self.best_value = scores["val_metric"]
+                if self.save_path:
+                    torch.save(self.model.state_dict(), self.save_path)
 
         self._early_stopping_check = check
 
@@ -167,12 +172,16 @@ class Trainer:
             "val_metric": val_metric(),
         }
 
-    def evaluate(self, test_loader: DataLoader) -> float:
+    def evaluate(self, test_loader: DataLoader, load_best=True) -> float:
         """Evaluate model on test set.
 
         Args:
+            load_best: Load best model weights from training.
             test_loader: Test data loader.
         """
+        if load_best:
+            self.model.load_state_dict(torch.load(self.save_path))
+
         self.model.eval()
         test_metric = self.metric()
         test_loss = 0

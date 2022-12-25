@@ -99,7 +99,11 @@ if __name__ == "__main__":
             # Train the model. Use early stopping on the validation set.
             writer = SummaryWriter(f"runs/{study_name}/{i}/assessment{j}")
             trainer = Trainer(model, optimizer, criterion, metric=evaluation_metric, device=device, writer=writer)
-            trainer.set_early_stopping(patience=hyperparams.patience, min_epochs=hyperparams.min_epochs)
+            trainer.set_early_stopping(
+                patience=hyperparams.patience,
+                min_epochs=hyperparams.min_epochs,
+                save_path=f"runs/{study_name}/{i}/assessment{j}/model.pt",
+            )
             trainer.train(train_loader, val_loader, epochs=hyperparams.max_epochs)
 
             # Evaluate the model on the test set.

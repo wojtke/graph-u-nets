@@ -2,7 +2,7 @@ hidden_channels:
   type: int
   low: 256
   high: 768
-  step: 64
+  step: 256
 
 depth:
   type: int
@@ -21,9 +21,7 @@ dropout:
 
 act: elu
 
-readout:
-  type: categorical
-  choices: [add, max, cat]
+readout: cat
 
 batch_size:
   type: int

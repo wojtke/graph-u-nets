@@ -43,7 +43,7 @@ def define_objective(
 
         hyperparams = hyperparams_space.pick(trial)
 
-        print(f"Hyperparameters: {hyperparams}")
+        print(f"Hyperparameters\n: {hyperparams}")
 
         train_idx, val_idx = split
         train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)
@@ -65,7 +65,7 @@ def define_objective(
         trainer = Trainer(model, optimizer, criterion, evaluation_metric, writer=writer, device=device)
         trainer.set_early_stopping(patience=hyperparams.patience, min_epochs=hyperparams.min_epochs)
         if pruning:
-            trainer.set_optuna_trial_prunning(trial)
+            trainer.set_optuna_trial_pruning(trial)
         trainer.train(train_loader, val_loader, epochs=hyperparams.max_epochs)
 
         return trainer.get_best_metric_score()
