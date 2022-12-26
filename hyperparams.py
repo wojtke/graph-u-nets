@@ -25,7 +25,7 @@ class Hyperparams:
     weight_decay: float
 
     min_epochs: int = 100
-    patience: int = 100
+    patience: int = 50
     max_epochs: int = 1000
 
     def save(self, path):
@@ -83,6 +83,8 @@ class HyperparamsSpace(Hyperparams):
         if isinstance(param, dict):
             suggest_func = getattr(trial, f"suggest_{param['type']}")
             return suggest_func(param_name, **{k: v for k, v in param.items() if k != "type"})
+        elif isinstance(param, list):
+            return trial.suggest_categorical(param_name, param)
         elif param is None:
             raise ValueError(f"Hyperparam '{param_name}' not defined.")
         else:
