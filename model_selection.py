@@ -15,13 +15,13 @@ from utils import mkdir_if_not_exists
 
 
 def define_objective(
-    dataset: Dataset,
-    split: Tuple[list, list],
-    hyperparams_space: HyperparamsSpace,
-    evaluation_metric: Metric,
-    task: str,
-    pruning: bool = True,
-    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        dataset: Dataset,
+        split: Tuple[list, list],
+        hyperparams_space: HyperparamsSpace,
+        evaluation_metric: Metric,
+        task: str,
+        pruning: bool = True,
+        device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> Callable:
     """Define the objective function to be optimized.
 
@@ -62,7 +62,7 @@ def define_objective(
 
         writer = SummaryWriter(f"runs/{trial.study.study_name}/trial{trial.number:04d}")
 
-        trainer = Trainer(model, optimizer, criterion, evaluation_metric, writer=writer, device=device)
+        trainer = Trainer(model, optimizer, criterion, evaluation_metric, writer=writer, device=device, verbose=True)
         trainer.set_early_stopping(patience=hyperparams.patience, min_epochs=hyperparams.min_epochs)
         if pruning:
             trainer.set_optuna_trial_pruning(trial)
@@ -74,16 +74,16 @@ def define_objective(
 
 
 def select_hyperparams(
-    dataset: Dataset,
-    split: Tuple[list, list],
-    study_name: str,
-    hyperparams_space: HyperparamsSpace,
-    metric: Metric,
-    task: str,
-    pruning: bool = True,
-    n_trials: int = 10,
-    n_jobs: int = 1,
-    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        dataset: Dataset,
+        split: Tuple[list, list],
+        study_name: str,
+        hyperparams_space: HyperparamsSpace,
+        metric: Metric,
+        task: str,
+        pruning: bool = True,
+        n_trials: int = 10,
+        n_jobs: int = 1,
+        device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> Hyperparams:
     """Select the best hyperparameters for the given dataset and split.
 

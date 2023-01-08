@@ -8,14 +8,14 @@ from metrics import Accuracy, Metric
 
 class Trainer:
     def __init__(
-        self,
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        criterion: torch.nn,
-        metric: Metric = Accuracy,
-        writer=None,
-        verbose: bool = False,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+            self,
+            model: torch.nn.Module,
+            optimizer: torch.optim.Optimizer,
+            criterion: torch.nn,
+            metric: Metric = Accuracy,
+            writer=None,
+            verbose: bool = False,
+            device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     ):
         """Initialize trainer.
 
@@ -66,10 +66,10 @@ class Trainer:
 
         def check(scores: dict):
             if (
-                self.metric.direction() == "minimize"
-                and scores["val_metric"] < self.best_value
-                or self.metric.direction() == "maximize"
-                and scores["val_metric"] > self.best_value
+                    self.metric.direction() == "minimize"
+                    and scores["val_metric"] < self.best_value
+                    or self.metric.direction() == "maximize"
+                    and scores["val_metric"] > self.best_value
             ):
                 self.best_epoch = self.epoch
                 self.best_value = scores["val_metric"]
@@ -107,8 +107,8 @@ class Trainer:
             if self.verbose:
                 print(
                     f"Epoch {self.epoch}. "
-                    f"Loss - val (train): {scores['val_loss']:.4f}({scores['train_loss']:.4f}). "
-                    f"{self.metric.__name__} - val (train): {scores['val_acc']:.4f} ({scores['train_acc']:.4f})."
+                    f"Loss - val/train: {scores['val_loss']:.4f}/{scores['train_loss']:.4f}. "
+                    f"{self.metric.__name__} - val/train: {scores['val_metric']:.4f}/{scores['train_metric']:.4f}."
                 )
 
             if self.writer:
@@ -147,7 +147,8 @@ class Trainer:
         for batch in train_loader:
             batch = batch.to(self.device)
             out = self.model(batch.x, batch.edge_index, batch.batch)
-            loss = self.criterion(out, batch.y)
+
+            loss = self.criterion(out, batch.y.squeeze())
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -162,7 +163,7 @@ class Trainer:
             for batch in val_loader:
                 batch = batch.to(self.device)
                 out = self.model(batch.x, batch.edge_index, batch.batch)
-                val_loss += self.criterion(out, batch.y).item()
+                val_loss += self.criterion(out, batch.y.squeeze()).item()
                 val_metric.add(out, batch.y)
 
         return {
@@ -189,7 +190,7 @@ class Trainer:
             for batch in test_loader:
                 batch = batch.to(self.device)
                 out = self.model(batch.x, batch.edge_index, batch.batch)
-                test_loss += self.criterion(out, batch.y).item()
+                test_loss += self.criterion(out, batch.y.squeeze()).item()
                 test_metric.add(out, batch.y)
 
         return test_metric()

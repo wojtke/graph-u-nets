@@ -25,7 +25,7 @@ class Hyperparams:
     weight_decay: float
 
     min_epochs: int = 100
-    patience: int = 100
+    patience: int = 50
     max_epochs: int = 1000
 
     def save(self, path):
@@ -80,6 +80,8 @@ class HyperparamsSpace(Hyperparams):
         Uses optuna's suggest_<type> methods to pick the hyperparameter.
         """
         param = self.__getattribute__(param_name)
+        if isinstance(param, list):
+            return trial.suggest_categorical(param_name, param)
         if isinstance(param, dict):
             suggest_func = getattr(trial, f"suggest_{param['type']}")
             return suggest_func(param_name, **{k: v for k, v in param.items() if k != "type"})

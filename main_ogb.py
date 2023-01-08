@@ -18,7 +18,8 @@ def parse_args():
     parser.add_argument("--dataset", type=str, default="ogbg-molhiv", help="dataset")
     parser.add_argument("--pool", type=str, default="topk", help="Pooling method")
     parser.add_argument("--conv", type=str, default="gcn", help="Convolution method")
-    parser.add_argument("--selection-trials", type=int, default=1, help="Number of trials for hyperparameter selection")
+    parser.add_argument("--selection-trials", type=int, default=50,
+                        help="Number of trials for hyperparameter selection")
     parser.add_argument("--hyperparams-space", type=str, default="hyperparams_space.yml")
     parser.add_argument("--seed", type=int, default=0, help="Seed for reproducibility")
     parser.add_argument("--device", type=str, default="cuda", help="Device to be used for training")
@@ -34,15 +35,14 @@ def eval(model, loader, evaluator, device):
     for batch in loader:
         batch = batch.to(device)
         batch.x = batch.x.float()
-        batch.y = batch.y.squeeze() if batch.y.dim() == 2 else batch.y
 
         pred = model(batch.x, batch.edge_index, batch.batch)
-        y_true.append(batch.y.view(pred.shape).detach().cpu())
+        y_true.append(batch.y.detach().cpu())
         y_pred.append(pred.detach().cpu())
 
     input_dict = {
         "y_true": torch.cat(y_true, dim=0).numpy(),
-        "y_pred": torch.cat(y_pred, dim=0).numpy()
+        "y_pred": torch.cat(y_pred, dim=0).numpy()[..., 0].reshape(-1, 1),
     }
 
     return evaluator.eval(input_dict)
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     # Train the model. Use early stopping on the validation set.
     writer = SummaryWriter(f"runs/{study_name}/assessment")
-    trainer = Trainer(model, optimizer, criterion, metric=evaluation_metric, device=device, writer=writer)
+    trainer = Trainer(model, optimizer, criterion, metric=evaluation_metric, device=device, writer=writer, verbose=True)
     trainer.set_early_stopping(
         patience=hyperparams.patience,
         min_epochs=hyperparams.min_epochs,
@@ -130,5 +130,3 @@ if __name__ == "__main__":
         f.write(
             f"Result: {result}\n"
         )
-
-

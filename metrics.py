@@ -13,8 +13,17 @@ class Metric(ABC):
 
     def add(self, y_pred: torch.Tensor, y_true: torch.Tensor):
         """Add predictions and true labels to the metric from a single batch."""
-        self.y_true.append(y_true.detach().cpu())
-        self.y_pred.append(y_pred.detach().cpu())
+        y_true = y_true.detach().cpu()
+        y_pred = y_pred.detach().cpu()
+
+        nan_mask = torch.isnan(y_true) | torch.isnan(y_pred)
+        nan_mask = nan_mask.sum(dim=1) == 0
+
+        self.y_true.append(y_true[nan_mask])
+        self.y_pred.append(y_pred[nan_mask])
+
+        self.y_true.append(y_true)
+        self.y_pred.append(y_pred)
 
     def reset(self):
         """Reset the metric to its initial state."""
@@ -58,6 +67,7 @@ class AUROC(Metric):
         y_pred = torch.cat(self.y_pred, dim=0)
 
         y_pred = y_pred[:, 1] if y_pred.size(1) > 1 else y_pred
+
         return roc_auc_score(y_true, y_pred)
 
     @classmethod
