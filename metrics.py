@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
+from ogb.graphproppred import Evaluator
 from sklearn.metrics import roc_auc_score, average_precision_score
 
 
@@ -22,7 +23,7 @@ class Metric(ABC):
         self.y_pred = []
 
     @abstractmethod
-    def __call__(self):
+    def compute(self):
         """Compute the metric from the predictions and true labels."""
         pass
 
@@ -36,7 +37,7 @@ class Metric(ABC):
 class Accuracy(Metric):
     """Accuracy is a metric that measures the proportion of correct predictions."""
 
-    def __call__(self):
+    def compute(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
 
@@ -53,7 +54,7 @@ class Accuracy(Metric):
 class AUROC(Metric):
     """Area under the Receiver Operating Characteristic Curve"""
 
-    def __call__(self):
+    def compute(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
 
@@ -68,7 +69,7 @@ class AUROC(Metric):
 class MSE(Metric):
     """Mean Squared Error"""
 
-    def __call__(self):
+    def compute(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
 
@@ -80,10 +81,31 @@ class MSE(Metric):
 
 
 class AveragePrecision(Metric):
-    def __call__(self):
+    def compute(self):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
         return average_precision_score(y_true, y_pred)
+
+    @classmethod
+    def direction(cls):
+        return "maximize"
+
+
+class OGBGraphPropMetric(Metric):
+    """OGB metric for graph classification"""
+
+    def __init__(self, dataset):
+        super().__init__()
+        self.evaluator = Evaluator(name=dataset)
+
+    def compute(self):
+        y_true = torch.cat(self.y_true, dim=0)
+        y_pred = torch.cat(self.y_pred, dim=0)
+
+        input_dict = {"y_true": y_true, "y_pred": y_pred}
+
+        result = self.evaluator.eval(input_dict)
+        return list(result)[0]
 
     @classmethod
     def direction(cls):

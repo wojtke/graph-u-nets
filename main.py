@@ -6,7 +6,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.loader import DataLoader
 
-from data_utils import load_dataset, load_splits, split_indices, load_dataset_artifacts
+from dataset_utils import load_dataset, load_splits, split_indices, load_dataset_artifacts
 from hyperparams import HyperparamsSpace
 from model_selection import select_hyperparams
 from models import GNN
