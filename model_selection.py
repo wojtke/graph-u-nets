@@ -37,13 +37,12 @@ def define_objective(
 
     def objective(trial: optuna.Trial) -> float:
         """Objective function to be optimized by optuna."""
-
         gc.collect()
         torch.cuda.empty_cache()
 
         hyperparams = hyperparams_space.pick(trial)
 
-        print(f"Hyperparameters:\n {hyperparams}")
+        #print(f"Hyperparameters:\n {hyperparams}")
 
         train_idx, val_idx = split
         train_loader = DataLoader(dataset[list(train_idx)], hyperparams.batch_size, shuffle=True)
@@ -105,6 +104,7 @@ def select_hyperparams(
         direction=metric.direction(),
         sampler=optuna.samplers.TPESampler(seed=0),
         load_if_exists=True,
+        storage=f"sqlite:///storage.db",
     )
 
     mkdir_if_not_exists(f"runs/{study_name}")

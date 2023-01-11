@@ -66,7 +66,7 @@ class AUROC(Metric):
         y_true = torch.cat(self.y_true, dim=0)
         y_pred = torch.cat(self.y_pred, dim=0)
 
-        y_pred = y_pred[:, 1] if y_pred.size(1) > 1 else y_pred
+        y_pred = torch.softmax(y_pred, dim=1)[:, 1]
 
         return roc_auc_score(y_true, y_pred)
 

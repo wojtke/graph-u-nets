@@ -1,6 +1,9 @@
+from typing import Tuple
+
 import numpy as np
 import optuna
 import torch
+from ogb.graphproppred import Evaluator
 from torch_geometric.loader import DataLoader
 
 from metrics import Accuracy, Metric
@@ -102,7 +105,21 @@ class Trainer:
         """
         while self.epoch < epochs:
             self.epoch += 1
-            scores = self.train_epoch(train_loader, val_loader)
+            train_loss, train_metric = self.train_epoch(train_loader)
+            val_loss, val_metric = self.eval_epoch(val_loader)
+
+            ogb_eval_metric = self.eval_ogb(
+                loader=val_loader,
+                evaluator=Evaluator('ogbg-molhiv')
+            )
+
+
+            scores = {
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "train_metric": train_metric,
+                "val_metric": val_metric
+            }
 
             if self.verbose:
                 print(
@@ -110,6 +127,7 @@ class Trainer:
                     f"Loss - val/train: {scores['val_loss']:.4f}/{scores['train_loss']:.4f}. "
                     f"{self.metric.__name__} - val/train: {scores['val_metric']:.4f}/{scores['train_metric']:.4f}."
                 )
+            print(f"OGB Evaluation Metric:", ogb_eval_metric)
 
             if self.writer:
                 self._write_to_history(scores)
@@ -133,12 +151,14 @@ class Trainer:
             self.writer.add_scalar(f"{self.metric.__name__}/train", scores["train_metric"], self.epoch)
             self.writer.add_scalar(f"{self.metric.__name__}/val", scores["val_metric"], self.epoch)
 
-    def train_epoch(self, train_loader: DataLoader, val_loader: DataLoader) -> dict:
+    def train_epoch(self, train_loader: DataLoader) -> Tuple[float, float]:
         """Train model for one epoch.
 
         Args:
             train_loader: Train data loader.
-            val_loader: Validation data loader.
+
+        Returns:
+            Train loss and metric score.
         """
         self.model.train()
 
@@ -156,22 +176,28 @@ class Trainer:
             train_loss += loss.item()
             train_metric.add(out, batch.y)
 
-        self.model.eval()
-        val_metric = self.metric()
-        val_loss = 0
-        with torch.no_grad():
-            for batch in val_loader:
-                batch = batch.to(self.device)
-                out = self.model(batch.x, batch.edge_index, batch.batch)
-                val_loss += self.criterion(out, batch.y.squeeze()).item()
-                val_metric.add(out, batch.y)
+        return train_loss / len(train_loader), train_metric()
 
-        return {
-            "train_loss": train_loss / len(train_loader),
-            "train_metric": train_metric(),
-            "val_loss": val_loss / len(val_loader),
-            "val_metric": val_metric(),
-        }
+    @torch.no_grad()
+    def eval_epoch(self, val_loader: DataLoader) -> Tuple[float, float]:
+        """Evaluate model on validation set.
+
+        Args:
+            val_loader: Validation data loader.
+
+        Returns:
+            Tuple of validation loss and metric score.
+        """
+        self.model.eval()
+        test_metric = self.metric()
+        test_loss = 0
+        for batch in val_loader:
+            batch = batch.to(self.device)
+            out = self.model(batch.x, batch.edge_index, batch.batch)
+            test_loss += self.criterion(out, batch.y.squeeze()).item()
+            test_metric.add(out, batch.y)
+
+        return test_loss / len(val_loader), test_metric()
 
     def evaluate(self, test_loader: DataLoader, load_best=True) -> float:
         """Evaluate model on test set.
@@ -194,3 +220,26 @@ class Trainer:
                 test_metric.add(out, batch.y)
 
         return test_metric()
+
+    @torch.no_grad()
+    def eval_ogb(self, loader, evaluator):
+        self.model.eval()
+        y_true = []
+        y_pred = []
+
+        for batch in loader:
+            batch = batch.to(self.device)
+            batch.x = batch.x.float()
+
+            pred = self.model(batch.x, batch.edge_index, batch.batch)
+            pred = torch.softmax(pred, dim=1)
+
+            y_true.append(batch.y.detach().cpu())
+            y_pred.append(pred.detach().cpu())
+
+        input_dict = {
+            "y_true": torch.cat(y_true, dim=0).numpy(),
+            "y_pred": torch.cat(y_pred, dim=0).numpy()[..., 1].reshape(-1, 1),
+        }
+
+        return evaluator.eval(input_dict)

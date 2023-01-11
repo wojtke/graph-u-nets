@@ -47,7 +47,7 @@ class GNN(torch.nn.Module):
             channels = self.g_unet.out_channels
         self.out = MLP(
             in_channels=channels,
-            hidden_channels=hyperparams.hidden_channels,
+            hidden_channels=int(hyperparams.hidden_channels/2),
             out_channels=out_channels,
             num_layers=1,
             act=hyperparams.act,

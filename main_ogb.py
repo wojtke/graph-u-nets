@@ -51,7 +51,7 @@ def eval(model, loader, evaluator, device):
 if __name__ == "__main__":
     args = parse_args()
     print_args(args)
-    study_name = f"{args.dataset}/OGB_{args.conv}_{args.pool}"
+    study_name = f"{args.dataset}/OGB_{args.conv}_{args.pool}_ok"
 
     set_reproducibility(args.seed)
     device = torch.device(int(args.device)) if args.device.isdigit() else torch.device(args.device)

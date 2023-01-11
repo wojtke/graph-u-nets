@@ -24,8 +24,8 @@ class Hyperparams:
     lr: float
     weight_decay: float
 
-    min_epochs: int = 100
-    patience: int = 50
+    min_epochs: int = 50
+    patience: int = 25
     max_epochs: int = 1000
 
     def save(self, path):
