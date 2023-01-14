@@ -1,18 +1,19 @@
-import numpy as np
 import torch
 from torch_geometric.loader import DataLoader
 
 from callbacks import History, ProgressBar
 from metrics import Accuracy, Metric
+from utils import get_device
 
 
 class Trainer:
     def __init__(
-        self,
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        criterion: torch.nn.Module,
-        metric: Metric = Accuracy,
+            self,
+            model: torch.nn.Module,
+            optimizer: torch.optim.Optimizer,
+            criterion: torch.nn.Module,
+            metric: Metric = Accuracy,
+            device: torch.device = get_device(),
     ):
         """Initialize trainer.
 
@@ -27,12 +28,13 @@ class Trainer:
         self.optimizer = optimizer
         self.criterion = criterion
         self.metric = metric
+        self.device = device
         self.epoch = 0
 
         self.stop_training_flag = False
 
         self.callbacks = {}
-        self.add_callbacks(History(), ProgressBar())
+        self.add_callbacks(History(metric=metric), ProgressBar())
 
     def add_callbacks(self, *callbacks):
         """Add callback to trainer.
@@ -47,7 +49,6 @@ class Trainer:
     def run_callbacks(self, logs: dict):
         """Run callbacks after each epoch."""
         for callback in self.callbacks.values():
-            callback(self, logs)
             callback(logs)
 
     def train(self, train_loader: DataLoader, val_loader: DataLoader, epochs: int = 1000):
@@ -78,7 +79,7 @@ class Trainer:
         for batch in loader:
             batch = batch.to(self.device)
             out = self.model(batch.x, batch.edge_index, batch.batch)
-            loss = self.criterion(out, batch.y)
+            loss = self.criterion(out, batch.y.float())
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -100,11 +101,25 @@ class Trainer:
         for batch in loader:
             batch = batch.to(self.device)
             out = self.model(batch.x, batch.edge_index, batch.batch)
-            loss += self.criterion(out, batch.y).item()
+            loss += self.criterion(out, batch.y.float()).item()
             metric.add(out, batch.y)
 
         return {"val_loss": loss / len(loader), "val_metric": metric.compute()}
 
+    def evaluate(self, loader, model=None) -> float:
+        """Evaluate model on data loader. Returns metric value.
 
+        Args:
+            loader: Data loader.
+            model: Model to evaluate. If None, use self.model.
+        """
+        if model is None:
+            model = self.model
+        model.eval()
+        metric = self.metric()
+        for batch in loader:
+            batch = batch.to(self.device)
+            out = model(batch.x, batch.edge_index, batch.batch)
+            metric.add(out, batch.y)
 
-
+        return metric.compute()

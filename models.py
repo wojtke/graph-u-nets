@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch_geometric
 from torch import Tensor
 from torch_geometric.nn import GCNConv
-from torch_geometric.typing import OptTensor, PairTensor
+from torch_geometric.typing import PairTensor
 from torch_geometric.utils import (
     add_self_loops,
     remove_self_loops,
@@ -47,14 +47,19 @@ class GNN(torch.nn.Module):
             channels = self.g_unet.out_channels
         self.out = MLP(
             in_channels=channels,
-            hidden_channels=int(hyperparams.hidden_channels/2),
+            hidden_channels=int(hyperparams.hidden_channels / 2),
             out_channels=out_channels,
-            dropout=hyperparams.dropout,
             num_layers=2,
             act=hyperparams.act,
         )
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch=None):
+        if x is None:
+            x = torch.ones((batch.size(0), self.g_unet.in_channels), device=edge_index.device)
+        if batch is None:
+            batch = edge_index.new_zeros(x.size(0))
+        x = x.float()
+
         x = self.g_unet(x, edge_index, batch)
         x = self.readout(x, batch)
         x = self.out(x)
@@ -69,13 +74,13 @@ class MLP(torch.nn.Sequential):
     """Multi-layer perceptron."""
 
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        hidden_channels: int,
-        num_layers: int,
-        dropout: float = 0.0,
-        act: Callable = torch.nn.ReLU,
+            self,
+            in_channels: int,
+            out_channels: int,
+            hidden_channels: int,
+            num_layers: int,
+            dropout: float = 0.0,
+            act: Callable = torch.nn.ReLU,
     ):
         """Initializes the MLP.
 
@@ -84,7 +89,7 @@ class MLP(torch.nn.Sequential):
             out_channels: Number of output features.
             hidden_channels: Number of hidden features.
             num_layers: Number of layers.
-            dropout: Dropout probability.
+            dropout: Dropout probability after each activation.
             act: Activation function.
         """
         super().__init__()
@@ -124,17 +129,17 @@ class GraphUNet(torch.nn.Module):
     """
 
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        hidden_channels: int,
-        depth: int = 3,
-        pool_ratios: Union[float, List[float]] = 0.5,
-        dropout: float = 0.0,
-        sum_res: bool = True,
-        act: Callable = F.elu,
-        conv: Callable = GCNConv,
-        pool: Callable = torch_geometric.nn.TopKPooling,
+            self,
+            in_channels: int,
+            out_channels: int,
+            hidden_channels: int,
+            depth: int = 3,
+            pool_ratios: Union[float, List[float]] = 0.5,
+            dropout: float = 0.0,
+            sum_res: bool = True,
+            act: Callable = F.elu,
+            conv: Callable = GCNConv,
+            pool: Callable = torch_geometric.nn.TopKPooling,
     ) -> None:
         super().__init__()
         assert depth >= 1
@@ -174,11 +179,7 @@ class GraphUNet(torch.nn.Module):
         for conv in self.up_convs:
             conv.reset_parameters()
 
-    def forward(self, x: Tensor, edge_index: Tensor, batch: OptTensor = None) -> Tensor:
-        if x is None:
-            x = torch.ones((batch.size(0), self.in_channels), device=edge_index.device)
-        if batch is None:
-            batch = edge_index.new_zeros(x.size(0))
+    def forward(self, x: Tensor, edge_index: Tensor, batch: Tensor) -> Tensor:
         edge_weight = x.new_ones(edge_index.size(1))
 
         x = self.down_convs[0](x, edge_index, edge_weight)

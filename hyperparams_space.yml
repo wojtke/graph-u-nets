@@ -1,13 +1,10 @@
 hidden_channels:
   type: int
   low: 256
-  high: 768
-  step: 256
+  high: 512
+  step: 128
 
-depth:
-  type: int
-  low: 3
-  high: 3
+depth: 4
 
 pool_ratios:
   type: float
@@ -26,13 +23,13 @@ act: elu
 readout: cat
 
 batch_size:
-  - 32
   - 64
   - 128
+  - 256
 
 lr:
+  - 0.005
   - 0.001
-  - 0.0001
-  - 0.00001
+  - 0.0005
 
-weight_decay: 0.0001
+weight_decay: 0.00001

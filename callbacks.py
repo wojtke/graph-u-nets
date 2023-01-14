@@ -2,16 +2,15 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import optuna
+import torch
 from torch.utils.tensorboard import SummaryWriter
-
-from training import Trainer
 
 
 class Callback(ABC):
     def __init__(self):
         pass
 
-    def setup(self, trainer: Trainer):
+    def setup(self, trainer):
         self.trainer = trainer
 
     @abstractmethod
@@ -20,7 +19,7 @@ class Callback(ABC):
 
 
 class EarlyStopping(Callback):
-    def __init__(self, patience=10, min_epochs=25, save_path=None, monitor="val_loss", direction="minimize"):
+    def __init__(self, patience=10, min_epochs=25, save_path=None, monitor="val_metric", direction="maximize"):
         super().__init__()
         self.patience = patience
         self.min_epochs = min_epochs
@@ -36,13 +35,13 @@ class EarlyStopping(Callback):
             self.best_value = logs[self.monitor]
             self.best_epoch = self.trainer.epoch
             if self.save_path is not None:
-                self.trainer.model.save(self.save_path)
+                torch.save(self.trainer.model.state_dict(), self.save_path)
         elif self.trainer.epoch - self.best_epoch > self.patience and self.trainer.epoch > self.min_epochs:
             self.trainer.stop_training_flag = True
 
 
 class OptunaPruning(Callback):
-    def __init__(self, trial, monitor="val_loss"):
+    def __init__(self, trial, monitor="val_metric"):
         super().__init__()
         self.trial = trial
         self.monitor = monitor
@@ -67,7 +66,7 @@ class TensorBoardWriter(Callback):
 
 
 class ProgressBar(Callback):
-    def __init__(self, monitor="val_loss"):
+    def __init__(self, monitor="val_metric"):
         super().__init__()
         self.monitor = monitor
 
@@ -76,14 +75,15 @@ class ProgressBar(Callback):
 
 
 class History(Callback):
-    def __init__(self):
+    def __init__(self, metric=None):
         super().__init__()
         self.history = {}
+        self.metric = metric
 
     def __getstate__(self):
         return self.history
 
-    def setup(self, trainer: Trainer):
+    def setup(self, trainer):
         super().setup(trainer)
         self.trainer.history = self
 
@@ -93,8 +93,11 @@ class History(Callback):
                 self.history[key] = []
             self.history[key].append(value)
 
-    def get_best(self, key):
-        return min(self.history[key]) if key.startswith("val") else max(self.history[key])
+    def get_best(self):
+        if self.metric is None:
+            raise ValueError("Metric not set.")
+        return max(self.history["val_metric"]) if self.metric.direction == "maximize" \
+            else min(self.history["val_metric"])
 
-    def get_best_epoch(self, key):
-        return np.argmin(self.history[key]) if key.startswith("val") else np.argmax(self.history[key])
+
+

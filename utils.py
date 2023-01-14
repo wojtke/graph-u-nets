@@ -34,3 +34,11 @@ def print_args(args):
     for k, v in vars(args).items():
         print(f"{k:>20} : {v}")
     print()
+
+
+def get_device(device=None) -> torch.device:
+    """Get the device."""
+    if device is None:
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        torch.device(device)

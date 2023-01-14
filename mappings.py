@@ -38,7 +38,13 @@ def get_pool(pooling_name: str) -> Callable:
 
 def get_evaluation_metric(metric_name: str) -> metrics.Metric:
     """Get the metric by name."""
-    METRICS = {"accuracy": metrics.Accuracy, "auroc": metrics.AUROC, "mse": metrics.MSE, "ap": metrics.AveragePrecision}
+    METRICS = {
+        "accuracy": metrics.Accuracy,
+        "auroc": metrics.AUROC,
+        "rocauc": metrics.AUROC,
+        "mse": metrics.MSE,
+        "ap": metrics.AveragePrecision
+    }
 
     if metric_name.lower() in METRICS:
         return METRICS[metric_name.lower()]

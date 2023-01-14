@@ -24,9 +24,9 @@ class Hyperparams:
     lr: float
     weight_decay: float
 
-    min_epochs: int = 100
-    patience: int = 50
-    max_epochs: int = 1000
+    min_epochs: int = 50
+    patience: int = 25
+    max_epochs: int = 1
 
     def save(self, path):
         """Saves to a yaml file."""
@@ -58,7 +58,7 @@ class Hyperparams:
             self.act = get_activation(self.act)
 
     def __repr__(self):
-        return "\n".join([f"{k:>15} : {v}" for k, v in self.__dict__.items()])
+        return "\n".join([f"{k:>20} : {v}" for k, v in self.__dict__.items()])
 
 
 @dataclass
@@ -91,4 +91,4 @@ class HyperparamsSpace(Hyperparams):
             return param
 
     def __repr__(self):
-        return "\n".join([f"{k:>15} : {v}" for k, v in self.__dict__.items()])
+        return "\n".join([f"{k:>20} : {v}" for k, v in self.__dict__.items()])
